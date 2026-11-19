@@ -1,0 +1,10 @@
+# build outputs and downloaded runtimes (./build.sh recreates them)
+dist/
+vendor/
+*.app/
+*.love
+*.zip
+*.iconset/
+
+# macOS
+.DS_Store
