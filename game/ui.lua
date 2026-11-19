@@ -96,22 +96,18 @@ function UI.loadTextures()
 end
 
 ---------------------------------------------------------------- shapes
-local meshCache = {}
-function UI.vgrad(x, y, w, h, top, bottom)
-  local m = lg.newMesh({ { x, y, 0, 0, top[1], top[2], top[3], top[4] or 1 }, { x + w, y, 0, 0, top[1], top[2], top[3], top[4] or 1 },
-    { x + w, y + h, 0, 0, bottom[1], bottom[2], bottom[3], bottom[4] or 1 }, { x, y + h, 0, 0, bottom[1], bottom[2], bottom[3], bottom[4] or 1 } }, 'fan', 'stream')
-  lg.setColor(1, 1, 1, 1); lg.draw(m)
-end
+function UI.vgrad(x, y, w, h, top, bottom) Art.gradRect(x, y, x + w, y + h, top, top, bottom, bottom) end
 local vgrad = UI.vgrad
 function UI.rect(x, y, w, h, c, a, r) setc(c, a); lg.rectangle('fill', x, y, w, h, r or 0, r or 0) end
 function UI.border(x, y, w, h, c, a, lw, r) setc(c, a); lg.setLineWidth(lw or 1); lg.rectangle('line', x + .5, y + .5, w - 1, h - 1, r or 0, r or 0) end
 
 -- textured bronze-framed panel, like the columns of the board
+local panelQuad = lg.newQuad(0, 0, 1, 1, 160, 160)
 function UI.panel(x, y, w, h)
   setc(C.panel); lg.rectangle('fill', x, y, w, h)
   lg.setColor(1, 1, 1, 1)
-  local q = lg.newQuad(x % 160, y % 160, w, h, 160, 160)
-  lg.draw(noiseImg, q, x, y)
+  panelQuad:setViewport(x % 160, y % 160, w, h, 160, 160)
+  lg.draw(noiseImg, panelQuad, x, y)
   lg.draw(vignetteImg, x, y, 0, w / 128, h / 128)
   UI.border(x - 1, y - 1, w + 2, h + 2, C.black)
   UI.border(x, y, w, h, C.frame, 1, 2)

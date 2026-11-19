@@ -82,15 +82,41 @@ local function triangles(p)
 end
 Art.triangles, Art.ellipsePts, Art.rrectPts, Art.quadPts = triangles, ellipsePts, rrectPts, quadPts
 
+---------------------------------------------------------------- reusable meshes
+-- Gradients, chart fills and flames are drawn as small meshes, many of them every frame. Making a new mesh for
+-- each one asks the graphics card for a new buffer and leaves garbage that stalls frames when it is collected,
+-- so one mesh per drawing mode is kept and refilled instead. It grows when a longer one is needed.
+local meshPool = {}
+function Art.mesh(verts, mode)
+  local n = #verts
+  local m = meshPool[mode]
+  if not m or m:getVertexCount() < n then
+    if m then m:release() end
+    m = lg.newMesh(max(n, 64), mode, 'stream')
+    meshPool[mode] = m
+  end
+  m:setVertices(verts)
+  m:setDrawRange(1, n)
+  return m
+end
+-- the four corners of a gradient rectangle, filled in place to make no garbage
+local quadVerts = { { 0, 0, 0, 0, 1, 1, 1, 1 }, { 0, 0, 0, 0, 1, 1, 1, 1 }, { 0, 0, 0, 0, 1, 1, 1, 1 }, { 0, 0, 0, 0, 1, 1, 1, 1 } }
+local function corner(k, x, y, c, a)
+  local v = quadVerts[k]
+  v[1], v[2], v[5], v[6], v[7], v[8] = x, y, c[1], c[2], c[3], a or c[4] or 1
+end
+-- Draws a rectangle whose four corners have the given colors (top-left, top-right, bottom-right, bottom-left).
+function Art.gradRect(x0, y0, x1, y1, c1, c2, c3, c4, a)
+  corner(1, x0, y0, c1, a); corner(2, x1, y0, c2, a); corner(3, x1, y1, c3, a); corner(4, x0, y1, c4, a)
+  lg.setColor(1, 1, 1, 1); lg.draw(Art.mesh(quadVerts, 'fan'))
+end
+
 ---------------------------------------------------------------- the painter
 local function gradientFill(stencilFn, x0, y0, x1, y1, col)
   lg.stencil(stencilFn, 'replace', 1)
   lg.setStencilTest('greater', 0)
   local L, D, Mc = tone(col, .32), tone(col, -.32), color(col)
-  local mesh = lg.newMesh({
-    { x0, y0, 0, 0, L[1], L[2], L[3], 1 }, { x1 + .01, y0, 0, 0, Mc[1], Mc[2], Mc[3], 1 },
-    { x1 + .01, y1 + .01, 0, 0, D[1], D[2], D[3], 1 }, { x0, y1 + .01, 0, 0, Mc[1], Mc[2], Mc[3], 1 } }, 'fan', 'static')
-  lg.setColor(1, 1, 1, 1); lg.draw(mesh)
+  Art.gradRect(x0, y0, x1 + .01, y1 + .01, L, Mc, D, Mc, 1)
   lg.setStencilTest()
 end
 local function roundLine(p, w)
@@ -126,6 +152,7 @@ end
 
 Art.RES = 128
 Art.MIP_SHARPNESS = .5   -- a little sharper than the default when icons are drawn smaller than they were painted
+local bodyCanvas   -- the multisampled canvas icons are painted on; one is shared by every icon (see Art.load)
 function Art.paint(draw)
   local L = {}
   local g = {}
@@ -145,7 +172,7 @@ function Art.paint(draw)
   draw(g)
 
   local R = Art.RES
-  local body = lg.newCanvas(R, R, { msaa = 8, dpiscale = 1 })
+  local body = bodyCanvas or lg.newCanvas(R, R, { msaa = 8, dpiscale = 1 })
   lg.push('all')
   lg.setCanvas({ body, stencil = true })
   lg.clear(0, 0, 0, 0)
@@ -167,7 +194,7 @@ function Art.paint(draw)
   for _, o in ipairs({ { 0, 2.5 }, { 1.2, 3 }, { -1.2, 3 }, { 0, 4 } }) do lg.setColor(0, 0, 0, .2); lg.draw(body, o[1] * k, o[2] * k) end
   lg.setColor(1, 1, 1, 1); lg.draw(body, 0, 0)
   lg.pop()
-  body:release()
+  if body ~= bodyCanvas then body:release() end
   if okMip then pcall(out.setMipmapFilter, out, 'linear', Art.MIP_SHARPNESS) end
   return out
 end
@@ -654,10 +681,12 @@ Art.ICONS = I
 ---------------------------------------------------------------- loading and drawing
 Art.img = {}
 function Art.load()
+  bodyCanvas = lg.newCanvas(Art.RES, Art.RES, { msaa = 8, dpiscale = 1 })
   for id, fn in pairs(I) do
     local ok, cv = pcall(Art.paint, fn)
     if ok then Art.img[id] = cv else print('icon failed: ' .. id .. ' ' .. tostring(cv)) end
   end
+  bodyCanvas:release(); bodyCanvas = nil
 end
 -- Draws an icon with its top-left at x, y and the given size.
 function Art.draw(id, x, y, size, alpha)

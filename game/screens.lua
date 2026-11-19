@@ -608,9 +608,7 @@ local mapCanvas, mapKey = nil, ''
 local WATERY = { river = true, lake = true, ocean = true }
 local function tileRng(seed, i) return love.math.newRandomGenerator(seed * 7 + i * 131) end
 local function hgrad(x, y, w, h, left, right)
-  local m = lg.newMesh({ { x, y, 0, 0, left[1], left[2], left[3], left[4] }, { x + w, y, 0, 0, right[1], right[2], right[3], right[4] },
-    { x + w, y + h, 0, 0, right[1], right[2], right[3], right[4] }, { x, y + h, 0, 0, left[1], left[2], left[3], left[4] } }, 'fan', 'stream')
-  lg.setColor(1, 1, 1, 1); lg.draw(m)
+  Art.gradRect(x, y, x + w, y + h, left, right, right, left)
 end
 local function paintTile(i, x, y, ts, rng)
   local s = S()
@@ -620,8 +618,7 @@ local function paintTile(i, x, y, ts, rng)
   local base = Art.color(t == 'river' and Sim.BIOME.grass.col or b.col)
   UI.setc(base); lg.rectangle('fill', x, y, ts + .6, ts + .6)
   local L, D = Art.tone(base, .1), Art.tone(base, -.18)
-  local mesh = lg.newMesh({ { x, y, 0, 0, L[1], L[2], L[3], 1 }, { x + ts, y, 0, 0, base[1], base[2], base[3], 1 }, { x + ts, y + ts, 0, 0, D[1], D[2], D[3], 1 }, { x, y + ts, 0, 0, base[1], base[2], base[3], 1 } }, 'fan', 'stream')
-  lg.setColor(1, 1, 1, 1); lg.draw(mesh)
+  Art.gradRect(x, y, x + ts, y + ts, L, base, D, base, 1)
   lg.setColor(0, 0, 0, .12)
   for _ = 1, 4 do lg.rectangle('fill', x + rng:random() * ts, y + rng:random() * ts, u * 1.2, u * 1.2) end
   lg.setLineJoin('bevel')
@@ -1213,7 +1210,7 @@ local function drawChart(id, x, y, w, h, title, data, step, col, opts)
     verts[#verts + 1] = { vx, base, 0, 0, col[1], col[2], col[3], .03 }
     pts[#pts + 1] = vx; pts[#pts + 1] = vy
   end
-  lg.setColor(1, 1, 1, 1); lg.draw(lg.newMesh(verts, 'strip', 'stream'))
+  lg.setColor(1, 1, 1, 1); lg.draw(Art.mesh(verts, 'strip'))
   UI.setc(col); lg.setLineWidth(2); lg.setLineJoin('bevel'); lg.line(pts)
   local function yearOf(k) return floor(k * step / 100) + 1 end
   UI.text('Year 1', px, py + ph + 5, UI.F.micro, C.muted)

@@ -49,7 +49,7 @@ local function tongue(x, base, w, h, sway, c1, c2, a)
     verts[#verts + 1] = { sx - width / 2, y, 0, 0, r, g, b, al }
     verts[#verts + 1] = { sx + width / 2, y, 0, 0, r, g, b, al }
   end
-  lg.draw(lg.newMesh(verts, 'strip', 'stream'))
+  lg.draw(Art.mesh(verts, 'strip'))
 end
 local function figure(x, y, s, facing, t)
   -- a person sitting by the fire, hunched forward with arms toward the warmth; the side facing the fire catches the light
